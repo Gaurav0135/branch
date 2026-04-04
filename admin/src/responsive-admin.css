@@ -1,0 +1,374 @@
+/* 📱 RESPONSIVE ADMIN ENHANCEMENTS */
+
+/* RESPONSIVE DESKTOP (1200px+) */
+@media (min-width: 1200px) {
+  .admin-content {
+    padding: 2rem;
+  }
+
+  .admin-sidebar {
+    padding: 1.5rem;
+  }
+}
+
+/* RESPONSIVE TABLET (768px - 992px) */
+@media (max-width: 992px) {
+  .admin-app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--admin-border);
+    padding: 1.2rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .page-header-row {
+    flex-direction: column;
+    align-items: start;
+  }
+
+  .admin-content {
+    padding: 1.2rem;
+  }
+
+  .page-header h2 {
+    font-size: 1.75rem;
+  }
+}
+
+/* RESPONSIVE MOBILE (576px - 768px) */
+@media (max-width: 768px) {
+  .admin-content,
+  .admin-sidebar,
+  .admin-login-card {
+    padding: 1rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-card h3 {
+    font-size: 1.5rem;
+  }
+
+  .page-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .page-header {
+    gap: 0.5rem;
+  }
+
+  .brand-block {
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .brand-block h1 {
+    font-size: 1rem;
+  }
+
+  .admin-table {
+    font-size: 0.88rem;
+  }
+
+  .admin-table thead th,
+  .admin-table tbody td {
+    padding: 0.5rem 0.25rem !important;
+  }
+
+  .table-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .btn {
+    font-size: 0.9rem;
+    padding: 0.4rem 0.8rem !important;
+    width: 100%;
+  }
+
+  .filter-box {
+    min-width: 100%;
+  }
+
+  .admin-nav {
+    gap: 0.35rem;
+  }
+
+  .admin-link {
+    padding: 0.75rem 0.75rem;
+    font-size: 0.95rem;
+  }
+
+  .form-control,
+  .form-select {
+    font-size: 16px !important;
+  }
+
+  .page-header-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* SMALL MOBILE (< 576px) */
+@media (max-width: 576px) {
+  .admin-app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-content,
+  .admin-sidebar,
+  .admin-login-card {
+    padding: 0.75rem;
+  }
+
+  .page-header h2 {
+    font-size: 1.3rem;
+  }
+
+  .admin-table {
+    font-size: 0.8rem;
+  }
+
+  .admin-table thead th,
+  .admin-table tbody td {
+    padding: 0.4rem 0.15rem !important;
+  }
+
+  .btn {
+    font-size: 0.85rem;
+    padding: 0.35rem 0.6rem !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .stat-card {
+    padding: 0.9rem;
+  }
+
+  .stat-card h3 {
+    font-size: 1.25rem;
+    margin: 0.3rem 0 0;
+  }
+
+  .stat-card p {
+    font-size: 0.85rem;
+  }
+
+  .filter-box label {
+    font-size: 0.85rem;
+  }
+
+  .brand-mark {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}
+
+/* VERY SMALL DEVICES (< 400px) */
+@media (max-width: 400px) {
+  .admin-content,
+  .admin-sidebar,
+  .admin-login-card {
+    padding: 0.5rem;
+  }
+
+  body {
+    font-size: 14px;
+  }
+
+  .page-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .admin-table {
+    font-size: 0.75rem;
+  }
+
+  .btn-sm {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem !important;
+  }
+
+  .admin-nav {
+    gap: 0.2rem;
+  }
+
+  .admin-link {
+    padding: 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  .brand-block h1 {
+    font-size: 0.9rem;
+  }
+}
+
+/* LANDSCAPE MODE */
+@media (orientation: landscape) and (max-height: 600px) {
+  .admin-sidebar {
+    padding: 0.75rem;
+  }
+
+  .brand-block {
+    gap: 0.5rem;
+  }
+
+  .brand-mark {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .admin-nav {
+    gap: 0.35rem;
+  }
+
+  .admin-link {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .page-header h2 {
+    font-size: 1.3rem;
+    margin: 0;
+  }
+
+  .stats-grid {
+    gap: 0.75rem;
+  }
+
+  .stat-card {
+    padding: 0.75rem;
+  }
+
+  .stat-card h3 {
+    font-size: 1.1rem;
+    margin: 0.15rem 0;
+  }
+
+  .stat-card p {
+    font-size: 0.75rem;
+  }
+}
+
+/* TOUCH-FRIENDLY INTERFACE */
+@media (hover: none) and (pointer: coarse) {
+  .btn,
+  button,
+  .admin-link {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 10px 15px !important;
+  }
+
+  a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .form-control,
+  .form-select,
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+    padding: 12px !important;
+    min-height: 44px;
+  }
+}
+
+/* SAFE AREA FOR NOTCHED DEVICES */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .admin-sidebar {
+    padding-left: calc(1.5rem + env(safe-area-inset-left));
+    padding-right: calc(1.5rem + env(safe-area-inset-right));
+  }
+
+  .admin-content {
+    padding-right: calc(1.5rem + env(safe-area-inset-right));
+    padding-left: calc(1.5rem + env(safe-area-inset-left));
+  }
+
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* PREVENT HORIZONTAL SCROLL */
+body,
+html {
+  overflow-x: hidden;
+}
+
+/* IMPROVE TEXTAREA SIZING ON MOBILE */
+textarea {
+  resize: vertical;
+}
+
+@media (max-width: 576px) {
+  textarea {
+    min-height: 100px;
+  }
+}
+
+/* BETTER TABLE RESPONSIVENESS */
+@media (max-width: 768px) {
+  .table-responsive-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  thead {
+    display: none;
+  }
+
+  tbody {
+    display: block;
+  }
+
+  tr {
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid var(--admin-border);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  td {
+    display: block;
+    text-align: right;
+    padding-left: 50%;
+    position: relative;
+    border: none;
+  }
+
+  td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 0;
+    width: 50%;
+    padding-right: 1rem;
+    font-weight: 700;
+    text-align: left;
+  }
+}

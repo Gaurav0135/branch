@@ -1,0 +1,293 @@
+/* 📱 RESPONSIVE DESIGN ENHANCEMENTS */
+/* Mobile First Approach */
+
+/* Add viewport meta tag in index.html */
+/* <meta name="viewport" content="width=device-width, initial-scale=1.0"> */
+
+/* ========================================
+   MOBILE (< 576px) - DEFAULT
+   ======================================== */
+
+body {
+  font-size: 16px;
+}
+
+/* Hero Section Mobile Optimization */
+.home-hero {
+  min-height: 50vh !important;
+}
+
+.home-hero-text {
+  padding: 20px 0 !important;
+}
+
+/* Form Elements Mobile */
+.form-control {
+  padding: 10px 12px !important;
+  font-size: 16px !important; /* Prevents zoom on iOS */
+  border-radius: 8px !important;
+}
+
+textarea.form-control {
+  min-height: 100px !important;
+}
+
+.btn {
+  padding: 10px 16px !important;
+  font-size: 14px !important;
+}
+
+/* Grid adjustments for mobile */
+.row {
+  margin-left: -10px !important;
+  margin-right: -10px !important;
+}
+
+.col-md-6, .col-lg-4 {
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+}
+
+/* Admin sidebar mobile */
+.admin-app-shell {
+  grid-template-columns: 1fr !important;
+}
+
+.admin-sidebar {
+  position: fixed;
+  left: -290px;
+  top: 0;
+  width: 290px;
+  height: 100vh;
+  z-index: 1000;
+  transition: left 0.3s ease;
+  overflow-y: auto;
+}
+
+.admin-sidebar.open {
+  left: 0 !important;
+}
+
+.admin-toggle {
+  display: block;
+}
+
+/* ========================================
+   TABLET (576px - 768px)
+   ======================================== */
+
+@media (min-width: 576px) {
+  body {
+    font-size: 17px;
+  }
+
+  .form-control {
+    font-size: 15px !important;
+  }
+
+  .home-hero {
+    min-height: 60vh !important;
+  }
+}
+
+/* ========================================
+   MEDIUM DEVICES (768px - 992px)
+   ======================================== */
+
+@media (min-width: 768px) {
+  body {
+    font-size: 18px;
+  }
+
+  .admin-app-shell {
+    grid-template-columns: 290px minmax(0, 1fr) !important;
+  }
+
+  .admin-sidebar {
+    position: static !important;
+    left: auto !important;
+  }
+
+  .admin-toggle {
+    display: none !important;
+  }
+
+  .home-hero {
+    min-height: 70vh !important;
+  }
+
+  .form-control {
+    padding: 12px !important;
+    font-size: 15px !important;
+  }
+}
+
+/* ========================================
+   LARGE DEVICES (992px +)
+   ======================================== */
+
+@media (min-width: 992px) {
+  body {
+    font-size: 18px;
+  }
+
+  .home-hero {
+    min-height: 90vh !important;
+  }
+}
+
+/* ========================================
+   EXTRA LARGE (1200px +)
+   ======================================== */
+
+@media (min-width: 1200px) {
+  body {
+    font-size: 18px;
+  }
+
+  .container,
+  .container-lg {
+    max-width: 1140px !important;
+  }
+}
+
+/* ========================================
+   COMMON IMPROVEMENTS
+   ======================================== */
+
+/* Touch-friendly buttons on mobile */
+@media (hover: none) and (pointer: coarse) {
+  .btn,
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* Prevent horizontal scroll */
+body,
+html {
+  overflow-x: hidden;
+}
+
+/* Images responsive */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Flexbox for better mobile layout */
+.flex-mobile {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .flex-mobile {
+    flex-direction: row;
+  }
+}
+
+/* Safe area for notched devices */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .navbar {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Gallery card responsive */
+.gallery-card {
+  height: auto;
+  aspect-ratio: 1/1;
+}
+
+/* Service card optimization */
+.service-card {
+  margin-bottom: 15px;
+}
+
+/* Table responsive wrapping */
+table {
+  width: 100%;
+  display: block;
+  overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+  table {
+    font-size: 14px;
+  }
+
+  th, td {
+    padding: 8px 4px !important;
+  }
+}
+
+/* Navbar optimization for mobile */
+@media (max-width: 768px) {
+  .navbar-brand {
+    font-size: 18px !important;
+  }
+
+  .navbar-nav {
+    gap: 0;
+  }
+
+  .nav-item {
+    margin-bottom: 8px;
+  }
+}
+
+/* Contact page mobile optimization */
+@media (max-width: 768px) {
+  .contact-card {
+    flex-direction: column !important;
+  }
+
+  .contact-left {
+    border-right: none !important;
+    border-bottom: 1px solid #222 !important;
+    margin-bottom: 20px;
+  }
+
+  .contact-form {
+    padding-top: 20px;
+  }
+}
+
+/* Orientation handling */
+@media (orientation: landscape) and (max-height: 600px) {
+  .home-hero {
+    min-height: 40vh !important;
+  }
+
+  .navbar {
+    padding: 8px 0;
+  }
+}
+
+/* Print styles */
+@media print {
+  .admin-sidebar,
+  .navbar {
+    display: none;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+}
