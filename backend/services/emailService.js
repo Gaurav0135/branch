@@ -1,6 +1,11 @@
 import nodemailer from "nodemailer";
+import dns from "node:dns";
 
 let transporter;
+
+const lookupIpv4 = (hostname, _options, callback) => {
+  dns.lookup(hostname, { family: 4, all: false }, callback);
+};
 
 const getPrimarySmtpConfig = () => {
   const host = process.env.SMTP_HOST;
@@ -23,6 +28,7 @@ const getPrimarySmtpConfig = () => {
     secure,
     auth: { user, pass },
     family,
+    lookup: lookupIpv4,
     connectionTimeout,
     greetingTimeout,
     socketTimeout
