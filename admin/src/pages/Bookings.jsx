@@ -20,6 +20,20 @@ const Bookings = () => {
   const [savingId, setSavingId] = useState('');
   const [filter, setFilter] = useState('all');
 
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(''), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(''), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
   const fetchBookings = async () => {
     try {
       setLoading(true);
@@ -117,8 +131,20 @@ const Bookings = () => {
         </div>
       </div>
 
-      {error ? <div className="alert alert-danger">{error}</div> : null}
-      {success ? <div className="alert alert-success">{success}</div> : null}
+      <div style={{ position: 'sticky', top: 0, zIndex: 999, maxWidth: '100%' }}>
+        {error ? (
+          <div className="alert alert-danger alert-dismissible fade show mb-3" role="alert" style={{ marginBottom: '1rem' }}>
+            <strong>❌ Error:</strong> {error}
+            <button type="button" className="btn-close" onClick={() => setError('')} />
+          </div>
+        ) : null}
+        {success ? (
+          <div className="alert alert-success alert-dismissible fade show mb-3" role="alert" style={{ marginBottom: '1rem' }}>
+            <strong>✅ Success:</strong> {success}
+            <button type="button" className="btn-close" onClick={() => setSuccess('')} />
+          </div>
+        ) : null}
+      </div>
 
       <div className="table-card">
         <div className="table-responsive">
