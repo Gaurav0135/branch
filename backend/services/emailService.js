@@ -21,6 +21,7 @@ const getTransporter = () => {
   const secure = String(process.env.SMTP_SECURE || (port === 465 ? "true" : "false")) === "true";
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
+  const family = Number(process.env.SMTP_IP_FAMILY || 4);
   const connectionTimeout = Number(process.env.SMTP_CONNECTION_TIMEOUT || 20000);
   const greetingTimeout = Number(process.env.SMTP_GREETING_TIMEOUT || 15000);
   const socketTimeout = Number(process.env.SMTP_SOCKET_TIMEOUT || 30000);
@@ -34,6 +35,7 @@ const getTransporter = () => {
     port,
     secure,
     auth: { user, pass },
+    family,
     connectionTimeout,
     greetingTimeout,
     socketTimeout
