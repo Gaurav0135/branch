@@ -1,10 +1,17 @@
 import nodemailer from "nodemailer";
 import dns from "node:dns";
-
-let transporter;
+import { promises as dnsPromises } from "node:dns";
 
 const lookupIpv4 = (hostname, _options, callback) => {
   dns.lookup(hostname, { family: 4, all: false }, callback);
+};
+
+const resolveHostToIpv4 = async (host) => {
+  const ipv4s = await dnsPromises.resolve4(host);
+  if (!ipv4s?.length) {
+    throw new Error(`No IPv4 address found for ${host}`);
+  }
+  return ipv4s[0];
 };
 
 const getPrimarySmtpConfig = () => {
@@ -37,15 +44,32 @@ const getPrimarySmtpConfig = () => {
 
 const createTransporter = (config) => nodemailer.createTransport(config);
 
+const buildResolvedTransportConfig = async (config) => {
+  try {
+    const ipv4Host = await resolveHostToIpv4(config.host);
+    return {
+      ...config,
+      host: ipv4Host,
+      tls: {
+        ...(config.tls || {}),
+        servername: config.host
+      }
+    };
+  } catch {
+    return config;
+  }
+};
+
 const sendMailWithDiagnostics = async (mailOptions) => {
-  const primaryConfig = getPrimarySmtpConfig();
+  const primaryBaseConfig = getPrimarySmtpConfig();
+  const primaryConfig = await buildResolvedTransportConfig(primaryBaseConfig);
   const primarySummary = `${primaryConfig.host}:${primaryConfig.port}, secure=${primaryConfig.secure}, family=${primaryConfig.family}`;
 
   try {
-    await getTransporter().sendMail(mailOptions);
+    await createTransporter(primaryConfig).sendMail(mailOptions);
     return;
   } catch (primaryErr) {
-    const canTrySslFallback = primaryConfig.host === "smtp.gmail.com" && primaryConfig.port !== 465;
+    const canTrySslFallback = primaryBaseConfig.host === "smtp.gmail.com" && primaryConfig.port !== 465;
 
     if (!canTrySslFallback) {
       throw new Error(`SMTP send failed (${primarySummary}): ${primaryErr.message}`);
@@ -68,14 +92,6 @@ const sendMailWithDiagnostics = async (mailOptions) => {
       );
     }
   }
-};
-
-const getTransporter = () => {
-  if (transporter) return transporter;
-
-  transporter = createTransporter(getPrimarySmtpConfig());
-
-  return transporter;
 };
 
 export const sendBookingAcceptedEmail = async (booking) => {
