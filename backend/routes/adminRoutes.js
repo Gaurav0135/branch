@@ -13,6 +13,7 @@ import {
   getAllUsers,
   getAllBookings,
   updateBookingStatus,
+  resendBookingEmail,
   deleteBooking,
   getAdminStats,
 } from "../controllers/adminController.js";
@@ -38,6 +39,7 @@ router.get("/users", adminOnly, getAllUsers);
 // Booking routes
 router.get("/bookings", adminOnly, getAllBookings);
 router.put("/bookings/:id", adminOnly, updateBookingStatus);
+router.post("/bookings/:id/resend-email", adminOnly, resendBookingEmail);
 router.delete("/bookings/:id", adminOnly, deleteBooking);
 
 // Dashboard summary

@@ -95,6 +95,30 @@ const Bookings = () => {
     }
   };
 
+  const resendEmail = async (bookingId) => {
+    try {
+      setSavingId(bookingId);
+      setError('');
+      const res = await API.post(`/admin/bookings/${bookingId}/resend-email`);
+      setBookings((current) => current.map((booking) => (booking._id === bookingId ? res.data : booking)));
+
+      const status = res.data?.ticketEmail?.status;
+      if (status === 'sent') {
+        setSuccess('Booking email sent successfully.');
+      } else if (status === 'failed') {
+        setError(res.data?.ticketEmail?.error || 'Email resend failed.');
+        setSuccess('');
+      } else {
+        setSuccess('Email resend requested.');
+      }
+    } catch (err) {
+      setSuccess('');
+      setError(err.response?.data?.msg || 'Failed to resend email.');
+    } finally {
+      setSavingId('');
+    }
+  };
+
   if (loading) {
     return (
       <div className="page-state">
@@ -178,6 +202,7 @@ const Bookings = () => {
                   const ticketEmail = booking.ticketEmail || {};
                   const emailStatus = ticketEmail.status || 'not_sent';
                   const emailType = ticketEmail.type || 'N/A';
+                  const canResendEmail = currentStatus === 'confirmed' || currentStatus === 'rejected';
 
                   return (
                     <tr key={booking._id}>
@@ -248,6 +273,14 @@ const Bookings = () => {
                             onClick={() => deleteBooking(booking._id)}
                           >
                             Delete
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-info"
+                            disabled={savingId === booking._id || !canResendEmail}
+                            onClick={() => resendEmail(booking._id)}
+                          >
+                            Resend Email
                           </button>
                           <select
                             className="form-select form-select-sm"

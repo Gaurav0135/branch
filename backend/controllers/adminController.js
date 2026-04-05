@@ -6,6 +6,41 @@ import { sendBookingAcceptedEmail, sendBookingRejectedEmail } from "../services/
 import fs from "fs/promises";
 import path from "path";
 
+const triggerBookingEmail = async (booking, emailType) => {
+  const currentEmailMeta = booking.ticketEmail?.toObject
+    ? booking.ticketEmail.toObject()
+    : (booking.ticketEmail || {});
+
+  booking.ticketEmail = {
+    ...currentEmailMeta,
+    type: emailType,
+    status: "not_sent",
+    sentAt: null,
+    lastAttemptAt: new Date(),
+    error: ""
+  };
+
+  await booking.save();
+
+  try {
+    if (emailType === "accepted") {
+      await sendBookingAcceptedEmail(booking);
+    } else {
+      await sendBookingRejectedEmail(booking);
+    }
+
+    booking.ticketEmail.status = "sent";
+    booking.ticketEmail.sentAt = new Date();
+    booking.ticketEmail.error = "";
+  } catch (emailErr) {
+    booking.ticketEmail.status = "failed";
+    booking.ticketEmail.error = emailErr.message;
+    console.error("Booking status email failed:", emailErr.message);
+  }
+
+  await booking.save();
+};
+
 // Service management
 export const createService = async (req, res) => {
   try {
@@ -152,38 +187,7 @@ export const updateBookingStatus = async (req, res) => {
     const rejectedNow = bookingStatus === "rejected" && previousStatus !== "rejected";
 
     if (acceptedNow || rejectedNow) {
-      const currentEmailMeta = booking.ticketEmail?.toObject
-        ? booking.ticketEmail.toObject()
-        : (booking.ticketEmail || {});
-
-      booking.ticketEmail = {
-        ...currentEmailMeta,
-        type: acceptedNow ? "accepted" : "rejected",
-        status: "not_sent",
-        sentAt: null,
-        lastAttemptAt: new Date(),
-        error: ""
-      };
-
-      await booking.save();
-
-      try {
-        if (acceptedNow) {
-          await sendBookingAcceptedEmail(booking);
-        } else {
-          await sendBookingRejectedEmail(booking);
-        }
-
-        booking.ticketEmail.status = "sent";
-        booking.ticketEmail.sentAt = new Date();
-        booking.ticketEmail.error = "";
-      } catch (emailErr) {
-        booking.ticketEmail.status = "failed";
-        booking.ticketEmail.error = emailErr.message;
-        console.error("Booking status email failed:", emailErr.message);
-      }
-
-      await booking.save();
+      await triggerBookingEmail(booking, acceptedNow ? "accepted" : "rejected");
       return res.json(booking);
     }
 
@@ -192,6 +196,29 @@ export const updateBookingStatus = async (req, res) => {
     res.json(booking);
   } catch (err) {
     res.status(500).json({ msg: err.message });
+  }
+};
+
+export const resendBookingEmail = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const booking = await Booking.findById(id)
+      .populate("userId", "name email role")
+      .populate("serviceId", "title price category");
+
+    if (!booking) return res.status(404).json({ msg: "Booking not found" });
+
+    if (!["confirmed", "rejected"].includes(booking.bookingStatus)) {
+      return res.status(400).json({ msg: "Email can only be resent for confirmed or rejected bookings." });
+    }
+
+    const emailType = booking.bookingStatus === "confirmed" ? "accepted" : "rejected";
+    await triggerBookingEmail(booking, emailType);
+
+    return res.json(booking);
+  } catch (err) {
+    return res.status(500).json({ msg: err.message });
   }
 };
 
