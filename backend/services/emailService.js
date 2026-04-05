@@ -2,14 +2,28 @@ import nodemailer from "nodemailer";
 
 let transporter;
 
+const sendMailWithDiagnostics = async (mailOptions) => {
+  try {
+    await getTransporter().sendMail(mailOptions);
+  } catch (err) {
+    const host = process.env.SMTP_HOST || "undefined-host";
+    const port = Number(process.env.SMTP_PORT || 587);
+    const secure = String(process.env.SMTP_SECURE || (port === 465 ? "true" : "false")) === "true";
+    throw new Error(`SMTP send failed (${host}:${port}, secure=${secure}): ${err.message}`);
+  }
+};
+
 const getTransporter = () => {
   if (transporter) return transporter;
 
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT || 587);
-  const secure = String(process.env.SMTP_SECURE || "false") === "true";
+  const secure = String(process.env.SMTP_SECURE || (port === 465 ? "true" : "false")) === "true";
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
+  const connectionTimeout = Number(process.env.SMTP_CONNECTION_TIMEOUT || 20000);
+  const greetingTimeout = Number(process.env.SMTP_GREETING_TIMEOUT || 15000);
+  const socketTimeout = Number(process.env.SMTP_SOCKET_TIMEOUT || 30000);
 
   if (!host || !user || !pass) {
     throw new Error("SMTP is not configured. Please set SMTP_HOST, SMTP_USER, and SMTP_PASS.");
@@ -19,7 +33,10 @@ const getTransporter = () => {
     host,
     port,
     secure,
-    auth: { user, pass }
+    auth: { user, pass },
+    connectionTimeout,
+    greetingTimeout,
+    socketTimeout
   });
 
   return transporter;
@@ -58,7 +75,7 @@ export const sendBookingAcceptedEmail = async (booking) => {
     html
   };
 
-  await getTransporter().sendMail(mailOptions);
+  await sendMailWithDiagnostics(mailOptions);
 };
 
 export const sendBookingRejectedEmail = async (booking) => {
@@ -94,7 +111,7 @@ export const sendBookingRejectedEmail = async (booking) => {
     html
   };
 
-  await getTransporter().sendMail(mailOptions);
+  await sendMailWithDiagnostics(mailOptions);
 };
 
 export const sendContactNotificationEmail = async (contact) => {
@@ -121,7 +138,7 @@ export const sendContactNotificationEmail = async (contact) => {
     </div>
   `;
 
-  await getTransporter().sendMail({
+  await sendMailWithDiagnostics({
     from,
     to,
     replyTo: contact?.email || undefined,
@@ -149,7 +166,7 @@ export const sendContactAcknowledgementEmail = async (contact) => {
     </div>
   `;
 
-  await getTransporter().sendMail({
+  await sendMailWithDiagnostics({
     from,
     to: contact.email,
     subject: "We received your message - Frameza",
