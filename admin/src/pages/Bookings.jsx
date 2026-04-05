@@ -3,6 +3,7 @@ import API from '../api/axios';
 
 const statusOptions = ['pending', 'confirmed', 'rejected', 'completed', 'cancelled'];
 const approvalStatusOptions = ['completed', 'cancelled'];
+const extraActionOptions = ['resend-email'];
 
 const statusLabel = {
   pending: 'Pending',
@@ -10,6 +11,18 @@ const statusLabel = {
   rejected: 'Rejected',
   completed: 'Completed',
   cancelled: 'Cancelled'
+};
+
+const successAlertStyle = {
+  background: '#E6F9F0',
+  color: '#1B7F5C',
+  border: '1px solid #28A745'
+};
+
+const errorAlertStyle = {
+  background: '#FDECEA',
+  color: '#B02A37',
+  border: '1px solid #DC3545'
 };
 
 const Bookings = () => {
@@ -157,14 +170,14 @@ const Bookings = () => {
 
       <div style={{ position: 'sticky', top: 0, zIndex: 999, maxWidth: '100%' }}>
         {error ? (
-          <div className="alert alert-danger alert-dismissible fade show mb-3" role="alert" style={{ marginBottom: '1rem' }}>
-            <strong>❌ Error:</strong> {error}
+          <div className="alert alert-dismissible fade show mb-3" role="alert" style={{ marginBottom: '1rem', ...errorAlertStyle }}>
+            <strong style={{ color: '#DC3545' }}>Error:</strong> {` ${error}`}
             <button type="button" className="btn-close" onClick={() => setError('')} />
           </div>
         ) : null}
         {success ? (
-          <div className="alert alert-success alert-dismissible fade show mb-3" role="alert" style={{ marginBottom: '1rem' }}>
-            <strong>✅ Success:</strong> {success}
+          <div className="alert alert-dismissible fade show mb-3" role="alert" style={{ marginBottom: '1rem', ...successAlertStyle }}>
+            <strong style={{ color: '#28A745' }}>Success:</strong> {` ${success}`}
             <button type="button" className="btn-close" onClick={() => setSuccess('')} />
           </div>
         ) : null}
@@ -274,27 +287,26 @@ const Bookings = () => {
                           >
                             Delete
                           </button>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-info"
-                            disabled={savingId === booking._id || !canResendEmail}
-                            onClick={() => resendEmail(booking._id)}
-                          >
-                            Resend Email
-                          </button>
                           <select
                             className="form-select form-select-sm"
                             value=""
                             disabled={savingId === booking._id}
                             onChange={(e) => {
-                              const nextStatus = e.target.value;
-                              if (nextStatus) {
-                                updateStatus(booking._id, nextStatus);
+                              const selectedAction = e.target.value;
+                              if (selectedAction === 'resend-email') {
+                                resendEmail(booking._id);
+                              } else if (selectedAction) {
+                                updateStatus(booking._id, selectedAction);
                               }
                               e.target.value = '';
                             }}
                           >
-                            <option value="">More status</option>
+                            <option value="">More actions</option>
+                            {extraActionOptions.map((option) => (
+                              <option key={option} value={option} disabled={!canResendEmail}>
+                                Resend Email
+                              </option>
+                            ))}
                             {approvalStatusOptions.map((option) => (
                               <option key={option} value={option}>
                                 {statusLabel[option]}
