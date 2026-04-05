@@ -16,6 +16,7 @@ const Bookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [savingId, setSavingId] = useState('');
   const [filter, setFilter] = useState('all');
 
@@ -50,9 +51,12 @@ const Bookings = () => {
   const updateStatus = async (bookingId, bookingStatus) => {
     try {
       setSavingId(bookingId);
+      setError('');
       const res = await API.put(`/admin/bookings/${bookingId}`, { bookingStatus });
       setBookings((current) => current.map((booking) => (booking._id === bookingId ? res.data : booking)));
+      setSuccess(`Booking updated to ${statusLabel[bookingStatus] || bookingStatus}.`);
     } catch (err) {
+      setSuccess('');
       setError(err.response?.data?.msg || 'Failed to update booking.');
     } finally {
       setSavingId('');
@@ -65,10 +69,12 @@ const Bookings = () => {
 
     try {
       setSavingId(bookingId);
+      setError('');
       await API.delete(`/admin/bookings/${bookingId}`);
       setBookings((current) => current.filter((booking) => booking._id !== bookingId));
-      setError('');
+      setSuccess('Booking deleted successfully.');
     } catch (err) {
+      setSuccess('');
       setError(err.response?.data?.msg || 'Failed to delete booking.');
     } finally {
       setSavingId('');
@@ -112,6 +118,7 @@ const Bookings = () => {
       </div>
 
       {error ? <div className="alert alert-danger">{error}</div> : null}
+      {success ? <div className="alert alert-success">{success}</div> : null}
 
       <div className="table-card">
         <div className="table-responsive">
