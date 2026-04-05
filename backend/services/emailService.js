@@ -2,20 +2,7 @@ import nodemailer from "nodemailer";
 
 let transporter;
 
-const sendMailWithDiagnostics = async (mailOptions) => {
-  try {
-    await getTransporter().sendMail(mailOptions);
-  } catch (err) {
-    const host = process.env.SMTP_HOST || "undefined-host";
-    const port = Number(process.env.SMTP_PORT || 587);
-    const secure = String(process.env.SMTP_SECURE || (port === 465 ? "true" : "false")) === "true";
-    throw new Error(`SMTP send failed (${host}:${port}, secure=${secure}): ${err.message}`);
-  }
-};
-
-const getTransporter = () => {
-  if (transporter) return transporter;
-
+const getPrimarySmtpConfig = () => {
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT || 587);
   const secure = String(process.env.SMTP_SECURE || (port === 465 ? "true" : "false")) === "true";
@@ -30,7 +17,7 @@ const getTransporter = () => {
     throw new Error("SMTP is not configured. Please set SMTP_HOST, SMTP_USER, and SMTP_PASS.");
   }
 
-  transporter = nodemailer.createTransport({
+  return {
     host,
     port,
     secure,
@@ -39,7 +26,48 @@ const getTransporter = () => {
     connectionTimeout,
     greetingTimeout,
     socketTimeout
-  });
+  };
+};
+
+const createTransporter = (config) => nodemailer.createTransport(config);
+
+const sendMailWithDiagnostics = async (mailOptions) => {
+  const primaryConfig = getPrimarySmtpConfig();
+  const primarySummary = `${primaryConfig.host}:${primaryConfig.port}, secure=${primaryConfig.secure}, family=${primaryConfig.family}`;
+
+  try {
+    await getTransporter().sendMail(mailOptions);
+    return;
+  } catch (primaryErr) {
+    const canTrySslFallback = primaryConfig.host === "smtp.gmail.com" && primaryConfig.port !== 465;
+
+    if (!canTrySslFallback) {
+      throw new Error(`SMTP send failed (${primarySummary}): ${primaryErr.message}`);
+    }
+
+    const fallbackConfig = {
+      ...primaryConfig,
+      port: 465,
+      secure: true
+    };
+
+    const fallbackSummary = `${fallbackConfig.host}:${fallbackConfig.port}, secure=${fallbackConfig.secure}, family=${fallbackConfig.family}`;
+
+    try {
+      await createTransporter(fallbackConfig).sendMail(mailOptions);
+      return;
+    } catch (fallbackErr) {
+      throw new Error(
+        `SMTP send failed (primary ${primarySummary}: ${primaryErr.message}; fallback ${fallbackSummary}: ${fallbackErr.message})`
+      );
+    }
+  }
+};
+
+const getTransporter = () => {
+  if (transporter) return transporter;
+
+  transporter = createTransporter(getPrimarySmtpConfig());
 
   return transporter;
 };
