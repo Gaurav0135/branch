@@ -3,7 +3,6 @@ import API from '../api/axios';
 
 const statusOptions = ['pending', 'confirmed', 'rejected', 'completed', 'cancelled'];
 const approvalStatusOptions = ['completed', 'cancelled'];
-const extraActionOptions = ['resend-email'];
 
 const statusLabel = {
   pending: 'Pending',
@@ -108,30 +107,6 @@ const Bookings = () => {
     }
   };
 
-  const resendEmail = async (bookingId) => {
-    try {
-      setSavingId(bookingId);
-      setError('');
-      const res = await API.post(`/admin/bookings/${bookingId}/resend-email`);
-      setBookings((current) => current.map((booking) => (booking._id === bookingId ? res.data : booking)));
-
-      const status = res.data?.ticketEmail?.status;
-      if (status === 'sent') {
-        setSuccess('Booking email sent successfully.');
-      } else if (status === 'failed') {
-        setError(res.data?.ticketEmail?.error || 'Email resend failed.');
-        setSuccess('');
-      } else {
-        setSuccess('Email resend requested.');
-      }
-    } catch (err) {
-      setSuccess('');
-      setError(err.response?.data?.msg || 'Failed to resend email.');
-    } finally {
-      setSavingId('');
-    }
-  };
-
   if (loading) {
     return (
       <div className="page-state">
@@ -215,7 +190,6 @@ const Bookings = () => {
                   const ticketEmail = booking.ticketEmail || {};
                   const emailStatus = ticketEmail.status || 'not_sent';
                   const emailType = ticketEmail.type || 'N/A';
-                  const canResendEmail = currentStatus === 'confirmed' || currentStatus === 'rejected';
 
                   return (
                     <tr key={booking._id}>
@@ -292,21 +266,14 @@ const Bookings = () => {
                             value=""
                             disabled={savingId === booking._id}
                             onChange={(e) => {
-                              const selectedAction = e.target.value;
-                              if (selectedAction === 'resend-email') {
-                                resendEmail(booking._id);
-                              } else if (selectedAction) {
-                                updateStatus(booking._id, selectedAction);
+                              const nextStatus = e.target.value;
+                              if (nextStatus) {
+                                updateStatus(booking._id, nextStatus);
                               }
                               e.target.value = '';
                             }}
                           >
-                            <option value="">More actions</option>
-                            {extraActionOptions.map((option) => (
-                              <option key={option} value={option} disabled={!canResendEmail}>
-                                Resend Email
-                              </option>
-                            ))}
+                            <option value="">More status</option>
                             {approvalStatusOptions.map((option) => (
                               <option key={option} value={option}>
                                 {statusLabel[option]}
