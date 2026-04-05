@@ -11,6 +11,7 @@ import {
   getAllImages,
   updateUserRole,
   getAllUsers,
+  deleteUser,
   getAllBookings,
   updateBookingStatus,
   resendBookingEmail,
@@ -35,6 +36,7 @@ router.get("/images", adminOnly, getAllImages);
 // User routes
 router.put("/users/:id/role", adminOnly, updateUserRole);
 router.get("/users", adminOnly, getAllUsers);
+router.delete("/users/:id", adminOnly, deleteUser);
 
 // Booking routes
 router.get("/bookings", adminOnly, getAllBookings);

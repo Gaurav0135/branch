@@ -5,6 +5,7 @@ const Users = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [updatingId, setUpdatingId] = useState('');
   const [query, setQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState('admin');
@@ -25,6 +26,24 @@ const Users = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  const deleteUser = async (userId, userName) => {
+    const confirmed = window.confirm(`Are you sure you want to delete ${userName}?`);
+    if (!confirmed) return;
+
+    try {
+      setUpdatingId(userId);
+      setError('');
+      await API.delete(`/admin/users/${userId}`);
+      setUsers((current) => current.filter((user) => user._id !== userId));
+      setSuccess(`User ${userName} deleted successfully.`);
+    } catch (err) {
+      setError(err.response?.data?.msg || 'Failed to delete user.');
+      setSuccess('');
+    } finally {
+      setUpdatingId('');
+    }
+  };
 
   const filteredUsers = useMemo(() => {
     const byRole = users.filter((user) => (user.role || 'user') === selectedRole);
@@ -85,6 +104,7 @@ const Users = () => {
         </div>
       </div>
 
+      {success ? <div className="alert alert-success mb-3">{success}</div> : null}
       <div className="table-actions flex-wrap mb-3">
         <button
           type="button"
@@ -113,12 +133,13 @@ const Users = () => {
                 <th>Email</th>
                 <th>Registered</th>
                 <th>Role</th>
+                <th>Action</th>
                 <th>Change Role</th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.length === 0 ? (
-                <tr>
+                <tr>6
                   <td colSpan="5" className="text-center text-muted py-4">
                     No users found.
                   </td>
@@ -155,6 +176,16 @@ const Users = () => {
                           Admin
                         </button>
                       </div>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger"
+                        disabled={updatingId === user._id}
+                        onClick={() => deleteUser(user._id, user.name || user.email)}
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))

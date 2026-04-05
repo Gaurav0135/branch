@@ -154,6 +154,18 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
+export const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findByIdAndDelete(id);
+    if (!user) return res.status(404).json({ msg: "User not found" });
+
+    res.json({ msg: "User deleted successfully", id });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+};
+
 // Booking management
 export const getAllBookings = async (req, res) => {
   try {
