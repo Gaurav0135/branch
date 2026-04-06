@@ -107,6 +107,21 @@ const Bookings = () => {
     }
   };
 
+  const resendEmail = async (bookingId) => {
+    try {
+      setSavingId(bookingId);
+      setError('');
+      const res = await API.post(`/admin/bookings/${bookingId}/resend-email`);
+      setBookings((current) => current.map((booking) => (booking._id === bookingId ? res.data : booking)));
+      setSuccess('Booking email resend triggered.');
+    } catch (err) {
+      setSuccess('');
+      setError(err.response?.data?.msg || 'Failed to resend booking email.');
+    } finally {
+      setSavingId('');
+    }
+  };
+
   if (loading) {
     return (
       <div className="page-state">
@@ -260,6 +275,17 @@ const Bookings = () => {
                             onClick={() => deleteBooking(booking._id)}
                           >
                             Delete
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-info"
+                            disabled={
+                              savingId === booking._id ||
+                              !['confirmed', 'rejected'].includes(currentStatus)
+                            }
+                            onClick={() => resendEmail(booking._id)}
+                          >
+                            Resend Email
                           </button>
                           <select
                             className="form-select form-select-sm"
