@@ -42,6 +42,23 @@ const triggerBookingEmail = async (booking, emailType) => {
   await booking.save();
 };
 
+const markBookingEmailPending = async (booking, emailType) => {
+  const currentEmailMeta = booking.ticketEmail?.toObject
+    ? booking.ticketEmail.toObject()
+    : (booking.ticketEmail || {});
+
+  booking.ticketEmail = {
+    ...currentEmailMeta,
+    type: emailType,
+    status: "not_sent",
+    sentAt: null,
+    lastAttemptAt: new Date(),
+    error: ""
+  };
+
+  await booking.save();
+};
+
 const triggerBookingEmailInBackground = async (bookingId, emailType) => {
   try {
     const booking = await Booking.findById(bookingId)
@@ -218,6 +235,7 @@ export const updateBookingStatus = async (req, res) => {
     await booking.save();
 
     if (acceptedNow || rejectedNow) {
+      await markBookingEmailPending(booking, acceptedNow ? "accepted" : "rejected");
       void triggerBookingEmailInBackground(booking._id, acceptedNow ? "accepted" : "rejected");
     }
 
@@ -242,7 +260,8 @@ export const resendBookingEmail = async (req, res) => {
     }
 
     const emailType = booking.bookingStatus === "confirmed" ? "accepted" : "rejected";
-    await triggerBookingEmail(booking, emailType);
+    await markBookingEmailPending(booking, emailType);
+    void triggerBookingEmailInBackground(booking._id, emailType);
 
     return res.json(booking);
   } catch (err) {
