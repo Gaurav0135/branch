@@ -183,8 +183,43 @@ const buildSmtpAttempts = (primaryBaseConfig) => {
 };
 
 const sendMailWithDiagnostics = async (mailOptions) => {
+  const hasBrevoApiKey = Boolean(String(process.env.BREVO_API_KEY || process.env.SENDINBLUE_API_KEY || "").trim());
   const primaryBaseConfig = getPrimarySmtpConfig();
   const attempts = buildSmtpAttempts(primaryBaseConfig);
+
+  // In hosted environments where Gmail SMTP is blocked, prefer Brevo HTTP first for fast delivery.
+  if (hasBrevoApiKey) {
+    try {
+      await sendViaBrevoHttp(mailOptions, ["brevo-first mode"]);
+      return;
+    } catch (httpErr) {
+      const brevoErrors = [`[${HTTP_FALLBACK_TAG}] ${httpErr.message}`];
+
+      if (String(httpErr.message || "").includes("Brevo HTTP 401")) {
+        throw new Error(`${brevoErrors.join(" | ")} | Configure a valid BREVO_API_KEY (Transactional API key from Brevo SMTP & API settings).`);
+      }
+
+      try {
+        await sendViaBrevoSmtpRelay(mailOptions, brevoErrors);
+        return;
+      } catch (relayErr) {
+        brevoErrors.push(`[${SMTP_RELAY_FALLBACK_TAG}] ${relayErr.message}`);
+
+        const smtpErrors = [];
+        for (const attempt of attempts) {
+          const summary = `${attempt.label} ${attempt.config.host}:${attempt.config.port}, secure=${attempt.config.secure}`;
+          try {
+            await createTransporter(attempt.config).sendMail(mailOptions);
+            return;
+          } catch (err) {
+            smtpErrors.push(`${summary}: ${err.message}`);
+          }
+        }
+
+        throw new Error(`[${SMTP_IMPL_TAG}] SMTP send failed after ${attempts.length} attempts. ${smtpErrors.join(" | ")} | ${brevoErrors.join(" | ")}`);
+      }
+    }
+  }
 
   const errors = [];
   for (const attempt of attempts) {

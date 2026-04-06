@@ -46,21 +46,32 @@ const Bookings = () => {
     }
   }, [error]);
 
-  const fetchBookings = async () => {
+  const fetchBookings = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await API.get('/admin/bookings');
       setBookings(res.data);
     } catch (err) {
       setError(err.response?.data?.msg || 'Failed to load bookings.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchBookings();
+
+    const interval = setInterval(() => {
+      fetchBookings(true);
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, []);
+
+  const queueRefreshAfterAction = () => {
+    setTimeout(() => fetchBookings(true), 4000);
+    setTimeout(() => fetchBookings(true), 12000);
+  };
 
   const visibleBookings = useMemo(() => {
     if (filter === 'all') return bookings;
@@ -81,6 +92,7 @@ const Bookings = () => {
       const res = await API.put(`/admin/bookings/${bookingId}`, { bookingStatus });
       setBookings((current) => current.map((booking) => (booking._id === bookingId ? res.data : booking)));
       setSuccess(`Booking updated to ${statusLabel[bookingStatus] || bookingStatus}.`);
+      queueRefreshAfterAction();
     } catch (err) {
       setSuccess('');
       setError(err.response?.data?.msg || 'Failed to update booking.');
@@ -114,6 +126,7 @@ const Bookings = () => {
       const res = await API.post(`/admin/bookings/${bookingId}/resend-email`);
       setBookings((current) => current.map((booking) => (booking._id === bookingId ? res.data : booking)));
       setSuccess('Booking email resend triggered.');
+      queueRefreshAfterAction();
     } catch (err) {
       setSuccess('');
       setError(err.response?.data?.msg || 'Failed to resend booking email.');
