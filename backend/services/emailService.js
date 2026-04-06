@@ -3,6 +3,7 @@ import dns from "node:dns";
 
 const SMTP_IMPL_TAG = "smtp-v2";
 const HTTP_FALLBACK_TAG = "brevo-http-v1";
+const SMTP_RELAY_FALLBACK_TAG = "brevo-smtp-relay-v1";
 
 const lookupIpv4 = (hostname, _options, callback) => {
   dns.lookup(hostname, { family: 4, all: false }, callback);
@@ -66,7 +67,7 @@ const normalizeRecipients = (to) => {
 };
 
 const sendViaBrevoHttp = async (mailOptions, smtpErrors) => {
-  const apiKey = process.env.BREVO_API_KEY;
+  const apiKey = String(process.env.BREVO_API_KEY || process.env.SENDINBLUE_API_KEY || "").trim();
   if (!apiKey) {
     throw new Error(`BREVO API key not configured. SMTP diagnostics: ${smtpErrors.join(" | ")}`);
   }
@@ -109,6 +110,31 @@ const sendViaBrevoHttp = async (mailOptions, smtpErrors) => {
   }
 
   return raw;
+};
+
+const sendViaBrevoSmtpRelay = async (mailOptions, priorErrors) => {
+  const relayKey = String(process.env.BREVO_SMTP_KEY || process.env.BREVO_API_KEY || "").trim();
+  if (!relayKey) {
+    throw new Error(`BREVO SMTP relay key not configured. Diagnostics: ${priorErrors.join(" | ")}`);
+  }
+
+  const relayPort = Number(process.env.BREVO_SMTP_PORT || 587);
+  const relaySecure = String(process.env.BREVO_SMTP_SECURE || (relayPort === 465 ? "true" : "false")) === "true";
+
+  const transporter = createTransporter({
+    host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+    port: relayPort,
+    secure: relaySecure,
+    auth: {
+      user: process.env.BREVO_SMTP_USER || "apikey",
+      pass: relayKey
+    },
+    connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT || 20000),
+    greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT || 15000),
+    socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT || 30000)
+  });
+
+  await transporter.sendMail(mailOptions);
 };
 
 const buildSmtpAttempts = (primaryBaseConfig) => {
@@ -175,9 +201,17 @@ const sendMailWithDiagnostics = async (mailOptions) => {
     await sendViaBrevoHttp(mailOptions, errors);
     return;
   } catch (httpErr) {
-    throw new Error(
-      `[${SMTP_IMPL_TAG}] SMTP send failed after ${attempts.length} attempts. ${errors.join(" | ")} | [${HTTP_FALLBACK_TAG}] ${httpErr.message}`
-    );
+    const fallbackErrors = [
+      `[${SMTP_IMPL_TAG}] SMTP send failed after ${attempts.length} attempts. ${errors.join(" | ")}`,
+      `[${HTTP_FALLBACK_TAG}] ${httpErr.message}`
+    ];
+
+    try {
+      await sendViaBrevoSmtpRelay(mailOptions, fallbackErrors);
+      return;
+    } catch (relayErr) {
+      throw new Error(`${fallbackErrors.join(" | ")} | [${SMTP_RELAY_FALLBACK_TAG}] ${relayErr.message}`);
+    }
   }
 };
 
