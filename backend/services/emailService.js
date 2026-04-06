@@ -206,6 +206,13 @@ const sendMailWithDiagnostics = async (mailOptions) => {
       `[${HTTP_FALLBACK_TAG}] ${httpErr.message}`
     ];
 
+    // Brevo rejected the API key; do not spend extra time on SMTP relay fallback.
+    if (String(httpErr.message || "").includes("Brevo HTTP 401")) {
+      throw new Error(
+        `${fallbackErrors.join(" | ")} | Configure a valid BREVO_API_KEY (Transactional API key from Brevo SMTP & API settings).`
+      );
+    }
+
     try {
       await sendViaBrevoSmtpRelay(mailOptions, fallbackErrors);
       return;

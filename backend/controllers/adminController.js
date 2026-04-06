@@ -42,22 +42,20 @@ const triggerBookingEmail = async (booking, emailType) => {
   await booking.save();
 };
 
-const triggerBookingEmailInBackground = (bookingId, emailType) => {
-  setImmediate(async () => {
-    try {
-      const booking = await Booking.findById(bookingId)
-        .populate("userId", "name email role")
-        .populate("serviceId", "title price category");
+const triggerBookingEmailInBackground = async (bookingId, emailType) => {
+  try {
+    const booking = await Booking.findById(bookingId)
+      .populate("userId", "name email role")
+      .populate("serviceId", "title price category");
 
-      if (!booking) {
-        return;
-      }
-
-      await triggerBookingEmail(booking, emailType);
-    } catch (err) {
-      console.error("Background booking email task failed:", err.message);
+    if (!booking) {
+      return;
     }
-  });
+
+    await triggerBookingEmail(booking, emailType);
+  } catch (err) {
+    console.error("Background booking email task failed:", err.message);
+  }
 };
 
 // Service management
@@ -220,7 +218,7 @@ export const updateBookingStatus = async (req, res) => {
     await booking.save();
 
     if (acceptedNow || rejectedNow) {
-      triggerBookingEmailInBackground(booking._id, acceptedNow ? "accepted" : "rejected");
+      void triggerBookingEmailInBackground(booking._id, acceptedNow ? "accepted" : "rejected");
     }
 
     res.json(booking);
