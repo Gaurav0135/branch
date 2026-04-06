@@ -17,6 +17,18 @@ SMTP_PASS=khro ptyq ekgt vgmt
 MAIL_FROM=Frameza <support.frameza@gmail.com>
 ```
 
+### Recommended (SMTP fallback over HTTPS)
+
+If Render blocks or throttles SMTP ports, add Brevo API fallback so emails still send:
+
+```
+BREVO_API_KEY=your_brevo_api_key
+BREVO_SENDER_EMAIL=support.frameza@gmail.com
+BREVO_SENDER_NAME=Frameza
+```
+
+With these variables configured, backend first tries SMTP and then automatically uses Brevo HTTPS API when SMTP fails.
+
 ### Steps to Update:
 
 1. Go to https://dashboard.render.com
@@ -69,3 +81,4 @@ These are already set on Render.
 - Confirm SMTP_PORT=587 (not 465)
 - Confirm SMTP_SECURE=false (for port 587)
 - Check SMTP_PASS is exactly: `khro ptyq ekgt vgmt` (with spaces)
+- If timeout persists on deployed backend, configure BREVO_API_KEY fallback to bypass SMTP port blocks.

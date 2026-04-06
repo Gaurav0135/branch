@@ -1,17 +1,11 @@
 import nodemailer from "nodemailer";
 import dns from "node:dns";
-import { promises as dnsPromises } from "node:dns";
+
+const SMTP_IMPL_TAG = "smtp-v2";
+const HTTP_FALLBACK_TAG = "brevo-http-v1";
 
 const lookupIpv4 = (hostname, _options, callback) => {
   dns.lookup(hostname, { family: 4, all: false }, callback);
-};
-
-const resolveHostToIpv4 = async (host) => {
-  const ipv4s = await dnsPromises.resolve4(host);
-  if (!ipv4s?.length) {
-    throw new Error(`No IPv4 address found for ${host}`);
-  }
-  return ipv4s[0];
 };
 
 const getPrimarySmtpConfig = () => {
@@ -20,7 +14,6 @@ const getPrimarySmtpConfig = () => {
   const secure = String(process.env.SMTP_SECURE || (port === 465 ? "true" : "false")) === "true";
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  const family = Number(process.env.SMTP_IP_FAMILY || 4);
   const connectionTimeout = Number(process.env.SMTP_CONNECTION_TIMEOUT || 20000);
   const greetingTimeout = Number(process.env.SMTP_GREETING_TIMEOUT || 15000);
   const socketTimeout = Number(process.env.SMTP_SOCKET_TIMEOUT || 30000);
@@ -34,8 +27,6 @@ const getPrimarySmtpConfig = () => {
     port,
     secure,
     auth: { user, pass },
-    family,
-    lookup: lookupIpv4,
     connectionTimeout,
     greetingTimeout,
     socketTimeout
@@ -44,54 +35,176 @@ const getPrimarySmtpConfig = () => {
 
 const createTransporter = (config) => nodemailer.createTransport(config);
 
-const buildResolvedTransportConfig = async (config) => {
-  try {
-    const ipv4Host = await resolveHostToIpv4(config.host);
-    return {
-      ...config,
-      host: ipv4Host,
-      tls: {
-        ...(config.tls || {}),
-        servername: config.host
-      }
-    };
-  } catch {
-    return config;
+const parseFromAddress = (fromValue) => {
+  const fallbackEmail = process.env.SMTP_USER || "noreply@example.com";
+  if (!fromValue) {
+    return { email: fallbackEmail, name: "Frameza" };
   }
+
+  const trimmed = String(fromValue).trim();
+  const match = trimmed.match(/^(.*)<([^>]+)>$/);
+  if (match) {
+    const name = match[1].trim().replace(/^"|"$/g, "");
+    return {
+      name: name || "Frameza",
+      email: match[2].trim()
+    };
+  }
+
+  return { email: trimmed, name: "Frameza" };
+};
+
+const normalizeRecipients = (to) => {
+  if (Array.isArray(to)) {
+    return to.map((entry) => ({ email: String(entry).trim() })).filter((entry) => !!entry.email);
+  }
+
+  return String(to || "")
+    .split(",")
+    .map((entry) => ({ email: entry.trim() }))
+    .filter((entry) => !!entry.email);
+};
+
+const sendViaBrevoHttp = async (mailOptions, smtpErrors) => {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) {
+    throw new Error(`BREVO API key not configured. SMTP diagnostics: ${smtpErrors.join(" | ")}`);
+  }
+
+  if (typeof fetch !== "function") {
+    throw new Error("Global fetch is unavailable in current Node runtime.");
+  }
+
+  const to = normalizeRecipients(mailOptions.to);
+  if (!to.length) {
+    throw new Error("No recipient email address provided.");
+  }
+
+  const sender = parseFromAddress(process.env.BREVO_SENDER || mailOptions.from);
+
+  const payload = {
+    sender: {
+      name: process.env.BREVO_SENDER_NAME || sender.name,
+      email: process.env.BREVO_SENDER_EMAIL || sender.email
+    },
+    to,
+    subject: mailOptions.subject,
+    htmlContent: mailOptions.html,
+    textContent: mailOptions.text || undefined,
+    replyTo: mailOptions.replyTo ? { email: String(mailOptions.replyTo) } : undefined
+  };
+
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-key": apiKey
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const raw = await response.text();
+  if (!response.ok) {
+    throw new Error(`Brevo HTTP ${response.status}: ${raw || "No response body"}`);
+  }
+
+  return raw;
+};
+
+const buildSmtpAttempts = (primaryBaseConfig) => {
+  const attempts = [
+    {
+      label: "primary-hostname-ipv4",
+      config: {
+        ...primaryBaseConfig,
+        family: 4,
+        lookup: lookupIpv4
+      }
+    },
+    {
+      label: "primary-hostname-default",
+      config: {
+        ...primaryBaseConfig
+      }
+    }
+  ];
+
+  const canTrySslFallback = primaryBaseConfig.host === "smtp.gmail.com" && primaryBaseConfig.port !== 465;
+  if (canTrySslFallback) {
+    attempts.push(
+      {
+        label: "fallback-465-ipv4",
+        config: {
+          ...primaryBaseConfig,
+          port: 465,
+          secure: true,
+          family: 4,
+          lookup: lookupIpv4
+        }
+      },
+      {
+        label: "fallback-465-default",
+        config: {
+          ...primaryBaseConfig,
+          port: 465,
+          secure: true
+        }
+      }
+    );
+  }
+
+  return attempts;
 };
 
 const sendMailWithDiagnostics = async (mailOptions) => {
   const primaryBaseConfig = getPrimarySmtpConfig();
-  const primaryConfig = await buildResolvedTransportConfig(primaryBaseConfig);
-  const primarySummary = `${primaryConfig.host}:${primaryConfig.port}, secure=${primaryConfig.secure}, family=${primaryConfig.family}`;
+  const attempts = buildSmtpAttempts(primaryBaseConfig);
 
-  try {
-    await createTransporter(primaryConfig).sendMail(mailOptions);
-    return;
-  } catch (primaryErr) {
-    const canTrySslFallback = primaryBaseConfig.host === "smtp.gmail.com" && primaryConfig.port !== 465;
-
-    if (!canTrySslFallback) {
-      throw new Error(`SMTP send failed (${primarySummary}): ${primaryErr.message}`);
-    }
-
-    const fallbackConfig = {
-      ...primaryConfig,
-      port: 465,
-      secure: true
-    };
-
-    const fallbackSummary = `${fallbackConfig.host}:${fallbackConfig.port}, secure=${fallbackConfig.secure}, family=${fallbackConfig.family}`;
-
+  const errors = [];
+  for (const attempt of attempts) {
+    const summary = `${attempt.label} ${attempt.config.host}:${attempt.config.port}, secure=${attempt.config.secure}`;
     try {
-      await createTransporter(fallbackConfig).sendMail(mailOptions);
+      await createTransporter(attempt.config).sendMail(mailOptions);
       return;
-    } catch (fallbackErr) {
-      throw new Error(
-        `SMTP send failed (primary ${primarySummary}: ${primaryErr.message}; fallback ${fallbackSummary}: ${fallbackErr.message})`
-      );
+    } catch (err) {
+      errors.push(`${summary}: ${err.message}`);
     }
   }
+
+  try {
+    await sendViaBrevoHttp(mailOptions, errors);
+    return;
+  } catch (httpErr) {
+    throw new Error(
+      `[${SMTP_IMPL_TAG}] SMTP send failed after ${attempts.length} attempts. ${errors.join(" | ")} | [${HTTP_FALLBACK_TAG}] ${httpErr.message}`
+    );
+  }
+};
+
+export const runSmtpDiagnostic = async () => {
+  const primaryBaseConfig = getPrimarySmtpConfig();
+  const attempts = buildSmtpAttempts(primaryBaseConfig);
+  const diagnostics = [];
+
+  for (const attempt of attempts) {
+    const transporter = createTransporter(attempt.config);
+    const summary = `${attempt.label} ${attempt.config.host}:${attempt.config.port}, secure=${attempt.config.secure}`;
+
+    try {
+      await transporter.verify();
+      diagnostics.push({ attempt: attempt.label, summary, ok: true, error: "" });
+      return { tag: SMTP_IMPL_TAG, ok: true, diagnostics };
+    } catch (err) {
+      diagnostics.push({ attempt: attempt.label, summary, ok: false, error: err.message });
+    }
+  }
+
+  return {
+    tag: SMTP_IMPL_TAG,
+    ok: false,
+    diagnostics,
+    httpFallbackConfigured: Boolean(process.env.BREVO_API_KEY)
+  };
 };
 
 export const sendBookingAcceptedEmail = async (booking) => {

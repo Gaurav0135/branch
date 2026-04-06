@@ -17,6 +17,7 @@ import {
   resendBookingEmail,
   deleteBooking,
   getAdminStats,
+  smtpDiagnostic,
 } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -46,5 +47,6 @@ router.delete("/bookings/:id", adminOnly, deleteBooking);
 
 // Dashboard summary
 router.get("/stats", adminOnly, getAdminStats);
+router.get("/smtp/diagnostic", adminOnly, smtpDiagnostic);
 
 export default router;

@@ -3,6 +3,7 @@ import Image from "../models/Image.js";
 import User from "../models/User.js";
 import Booking from "../models/Booking.js";
 import { sendBookingAcceptedEmail, sendBookingRejectedEmail } from "../services/emailService.js";
+import { runSmtpDiagnostic } from "../services/emailService.js";
 import fs from "fs/promises";
 import path from "path";
 
@@ -39,6 +40,24 @@ const triggerBookingEmail = async (booking, emailType) => {
   }
 
   await booking.save();
+};
+
+const triggerBookingEmailInBackground = (bookingId, emailType) => {
+  setImmediate(async () => {
+    try {
+      const booking = await Booking.findById(bookingId)
+        .populate("userId", "name email role")
+        .populate("serviceId", "title price category");
+
+      if (!booking) {
+        return;
+      }
+
+      await triggerBookingEmail(booking, emailType);
+    } catch (err) {
+      console.error("Background booking email task failed:", err.message);
+    }
+  });
 };
 
 // Service management
@@ -198,12 +217,11 @@ export const updateBookingStatus = async (req, res) => {
     const acceptedNow = bookingStatus === "confirmed" && previousStatus !== "confirmed";
     const rejectedNow = bookingStatus === "rejected" && previousStatus !== "rejected";
 
-    if (acceptedNow || rejectedNow) {
-      await triggerBookingEmail(booking, acceptedNow ? "accepted" : "rejected");
-      return res.json(booking);
-    }
-
     await booking.save();
+
+    if (acceptedNow || rejectedNow) {
+      triggerBookingEmailInBackground(booking._id, acceptedNow ? "accepted" : "rejected");
+    }
 
     res.json(booking);
   } catch (err) {
@@ -269,5 +287,15 @@ export const getAdminStats = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ msg: err.message });
+  }
+};
+
+export const smtpDiagnostic = async (_req, res) => {
+  try {
+    const result = await runSmtpDiagnostic();
+    const statusCode = result.ok ? 200 : 503;
+    res.status(statusCode).json(result);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
 };
