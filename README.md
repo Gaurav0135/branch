@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Frameza - MERN App</title>
+  <h2>Frameza <h2/>
 </head>
 
 <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 20px;">
@@ -162,6 +162,15 @@ npm start
   <h2>📸 Screenshots</h2>
   <img src="https://github.com/user-attachments/assets/232aec60-02b6-4adc-a10b-ca73697539b1" width="100%" /><br/><br/>
   <img src="https://github.com/user-attachments/assets/c0385276-12e9-464e-8107-beebd8738e08" width="100%" /><br/><br/>
+  <img width="1919" height="933" alt="image" src="https://github.com/user-attachments/assets/8fd97b6a-add9-42eb-b4ef-e86f3c5469e5" />
+  <img width="1919" height="851" alt="image" src="https://github.com/user-attachments/assets/19a125ca-163c-451e-9db6-3c08f6619c2d" />
+  <img width="1919" height="870" alt="image" src="https://github.com/user-attachments/assets/92425a28-c770-4c8d-a31b-f62b6394c850" />
+
+  <br /><br />
+  <h5>Admin Pannel <h5 />
+  <img width="1919" height="877" alt="image" src="https://github.com/user-attachments/assets/983ee12f-478e-4623-a683-c8e43eeb7549" />
+  <img width="1917" height="861" alt="image" src="https://github.com/user-attachments/assets/8700fe1e-669c-491a-ba87-82e5804bdedf" />
+
 
   <hr/>
 
