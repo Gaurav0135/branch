@@ -109,7 +109,7 @@ export const deleteService = async (req, res) => {
 
 export const getAllServices = async (req, res) => {
   try {
-    const services = await Service.find();
+    const services = await Service.find().sort({ _id: -1 }).lean();
     res.json(services);
   } catch (err) {
     res.status(500).json({ msg: err.message });
@@ -159,7 +159,7 @@ export const deleteImage = async (req, res) => {
 
 export const getAllImages = async (req, res) => {
   try {
-    const images = await Image.find();
+    const images = await Image.find().sort({ createdAt: -1 }).lean();
     res.json(images);
   } catch (err) {
     res.status(500).json({ msg: err.message });
@@ -181,7 +181,7 @@ export const updateUserRole = async (req, res) => {
 
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password");
+    const users = await User.find().select("-password").sort({ createdAt: -1 }).lean();
     res.json(users);
   } catch (err) {
     res.status(500).json({ msg: err.message });
@@ -206,7 +206,8 @@ export const getAllBookings = async (req, res) => {
     const bookings = await Booking.find()
       .populate("userId", "name email role")
       .populate("serviceId", "title price category")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.json(bookings);
   } catch (err) {

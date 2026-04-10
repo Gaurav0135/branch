@@ -4,11 +4,49 @@ import API from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import useAutoRefresh from '../hooks/useAutoRefresh';
 
+const CACHE_TTL_MS = 2 * 60 * 1000;
+
 const UserBookings = () => {
   const { user } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [usingCachedData, setUsingCachedData] = useState(false);
+
+  const getBookingCacheKey = useCallback(() => {
+    if (!user?._id) return "";
+    return `frameza_user_bookings_cache_${user._id}`;
+  }, [user]);
+
+  const readCachedBookings = useCallback(() => {
+    const key = getBookingCacheKey();
+    if (!key) return false;
+
+    try {
+      const cachedRaw = sessionStorage.getItem(key);
+      if (!cachedRaw) return false;
+      const cached = JSON.parse(cachedRaw);
+      const isFresh = Date.now() - Number(cached.timestamp || 0) < CACHE_TTL_MS;
+      if (!isFresh || !Array.isArray(cached.data)) return false;
+      setBookings(cached.data);
+      setError("");
+      setUsingCachedData(true);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [getBookingCacheKey]);
+
+  const writeCachedBookings = useCallback((data) => {
+    const key = getBookingCacheKey();
+    if (!key) return;
+
+    try {
+      sessionStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+    } catch {
+      // Ignore cache write errors.
+    }
+  }, [getBookingCacheKey]);
 
   const formatRefreshText = (timestamp) => {
     if (!timestamp) return 'Waiting for next sync...';
@@ -32,7 +70,9 @@ const UserBookings = () => {
       }
       const res = await API.get("/bookings/me");
       setBookings(res.data);
+      writeCachedBookings(res.data);
       setError("");
+      setUsingCachedData(false);
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.msg || "Failed to load your bookings.");
@@ -41,11 +81,23 @@ const UserBookings = () => {
         setLoading(false);
       }
     }
-  }, [user]);
+  }, [user, writeCachedBookings]);
 
   useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    const hasFreshCache = readCachedBookings();
+    if (hasFreshCache) {
+      setLoading(false);
+      fetchBookings(false);
+      return;
+    }
+
     fetchBookings(true);
-  }, [fetchBookings]);
+  }, [fetchBookings, readCachedBookings, user]);
 
   const { lastRefreshAt, isRefreshing } = useAutoRefresh(() => fetchBookings(false), {
     enabled: !!user,
@@ -145,6 +197,9 @@ const UserBookings = () => {
           <small className="text-secondary d-block mt-2">
             {isRefreshing ? 'Refreshing...' : formatRefreshText(lastRefreshAt)}
           </small>
+          {usingCachedData ? (
+            <small className="text-warning d-block">Showing cached data while refreshing...</small>
+          ) : null}
         </div>
 
         {bookings.length === 0 ? (

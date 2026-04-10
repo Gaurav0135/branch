@@ -3,9 +3,39 @@ import API from '../api/axios';
 import ServiceCard from '../components/ServiceCard';
 import useAutoRefresh from '../hooks/useAutoRefresh';
 
+const SERVICES_CACHE_KEY = 'frameza_services_cache_v1';
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
 const Services = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [usingCachedData, setUsingCachedData] = useState(false);
+
+  const readCachedServices = useCallback(() => {
+    try {
+      const cachedRaw = sessionStorage.getItem(SERVICES_CACHE_KEY);
+      if (!cachedRaw) return false;
+      const cached = JSON.parse(cachedRaw);
+      const isFresh = Date.now() - Number(cached.timestamp || 0) < CACHE_TTL_MS;
+      if (!isFresh || !Array.isArray(cached.data)) return false;
+      setServices(cached.data);
+      setUsingCachedData(true);
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const writeCachedServices = useCallback((data) => {
+    try {
+      sessionStorage.setItem(
+        SERVICES_CACHE_KEY,
+        JSON.stringify({ data, timestamp: Date.now() })
+      );
+    } catch {
+      // Ignore cache write errors.
+    }
+  }, []);
 
   const formatRefreshText = (timestamp) => {
     if (!timestamp) return 'Waiting for next sync...';
@@ -22,6 +52,8 @@ const Services = () => {
       }
       const response = await API.get('/services');
       setServices(response.data);
+      writeCachedServices(response.data);
+      setUsingCachedData(false);
     } catch (error) {
       console.error('Error fetching services:', error);
     } finally {
@@ -29,11 +61,17 @@ const Services = () => {
         setLoading(false);
       }
     }
-  }, []);
+  }, [writeCachedServices]);
 
   useEffect(() => {
+    const hasFreshCache = readCachedServices();
+    if (hasFreshCache) {
+      setLoading(false);
+      fetchServices(false);
+      return;
+    }
     fetchServices(true);
-  }, [fetchServices]);
+  }, [fetchServices, readCachedServices]);
 
   const { lastRefreshAt, isRefreshing } = useAutoRefresh(() => fetchServices(false), {
     intervalMs: 10000
@@ -64,6 +102,9 @@ const Services = () => {
           <small className="text-secondary d-block mt-2">
             {isRefreshing ? 'Refreshing...' : formatRefreshText(lastRefreshAt)}
           </small>
+          {usingCachedData ? (
+            <small className="text-warning d-block">Showing cached data while refreshing...</small>
+          ) : null}
         </div>
 
         <div className="row g-4">

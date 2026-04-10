@@ -4,11 +4,42 @@ import API from '../api/axios';
 import GalleryCard from '../components/GalleryCard';
 import useAutoRefresh from '../hooks/useAutoRefresh';
 
+const GALLERY_CACHE_KEY = 'frameza_gallery_cache_v1';
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
 const Gallery = () => {
   const [images, setImages] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [loading, setLoading] = useState(true);
+  const [usingCachedData, setUsingCachedData] = useState(false);
+
+  const readCachedGallery = useCallback(() => {
+    try {
+      const cachedRaw = sessionStorage.getItem(GALLERY_CACHE_KEY);
+      if (!cachedRaw) return false;
+      const cached = JSON.parse(cachedRaw);
+      const isFresh = Date.now() - Number(cached.timestamp || 0) < CACHE_TTL_MS;
+      if (!isFresh || !Array.isArray(cached.images) || !Array.isArray(cached.categories)) return false;
+      setImages(cached.images);
+      setCategories(cached.categories);
+      setUsingCachedData(true);
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const writeCachedGallery = useCallback((nextImages, nextCategories) => {
+    try {
+      sessionStorage.setItem(
+        GALLERY_CACHE_KEY,
+        JSON.stringify({ images: nextImages, categories: nextCategories, timestamp: Date.now() })
+      );
+    } catch {
+      // Ignore cache write errors.
+    }
+  }, []);
 
   const formatRefreshText = (timestamp) => {
     if (!timestamp) return 'Waiting for next sync...';
@@ -29,16 +60,23 @@ const Gallery = () => {
         API.get('/categories')
       ]);
 
-      setImages(imagesRes.data);
-      setCategories(categoriesRes.data.map(cat => cat.slug || cat.name));
+      const nextImages = imagesRes.data;
+      const nextCategories = categoriesRes.data.map(cat => cat.slug || cat.name);
+      setImages(nextImages);
+      setCategories(nextCategories);
+      writeCachedGallery(nextImages, nextCategories);
+      setUsingCachedData(false);
     } catch (error) {
       console.error('Error fetching gallery data:', error);
 
       try {
         const response = await API.get('/images');
-        setImages(response.data);
-        const uniqueCategories = [...new Set(response.data.map(img => img.category))];
+        const nextImages = response.data;
+        const uniqueCategories = [...new Set(nextImages.map(img => img.category))];
+        setImages(nextImages);
         setCategories(uniqueCategories);
+        writeCachedGallery(nextImages, uniqueCategories);
+        setUsingCachedData(false);
       } catch (fallbackError) {
         console.error('Fallback error:', fallbackError);
       }
@@ -47,11 +85,17 @@ const Gallery = () => {
         setLoading(false);
       }
     }
-  }, []);
+  }, [writeCachedGallery]);
 
   useEffect(() => {
+    const hasFreshCache = readCachedGallery();
+    if (hasFreshCache) {
+      setLoading(false);
+      fetchData(false);
+      return;
+    }
     fetchData(true);
-  }, [fetchData]);
+  }, [fetchData, readCachedGallery]);
 
   const { lastRefreshAt, isRefreshing } = useAutoRefresh(() => fetchData(false), {
     intervalMs: 10000
@@ -84,6 +128,9 @@ const Gallery = () => {
           <small style={styles.refreshText}>
             {isRefreshing ? 'Refreshing...' : formatRefreshText(lastRefreshAt)}
           </small>
+          {usingCachedData ? (
+            <small style={styles.cachedText}>Showing cached data while refreshing...</small>
+          ) : null}
         </div>
 
         {/* Filters */}
@@ -162,6 +209,12 @@ const styles = {
     color: "#888",
     display: "block",
     marginTop: "8px"
+  },
+
+  cachedText: {
+    color: "#f0c36d",
+    display: "block",
+    marginTop: "4px"
   },
 
   filterWrapper: {

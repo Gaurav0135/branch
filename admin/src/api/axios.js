@@ -2,12 +2,15 @@ import axios from 'axios';
 
 const DEFAULT_LOCAL_API = 'http://localhost:5000/api';
 const DEFAULT_PROD_API = 'https://frameza-backend.onrender.com/api';
+const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_REQUEST_TIMEOUT_MS || 12000);
+const MAX_RETRIES = Number(import.meta.env.VITE_API_MAX_RETRIES || 2);
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? DEFAULT_PROD_API : DEFAULT_LOCAL_API);
 
 const API = axios.create({
   baseURL: API_BASE_URL,
+  timeout: REQUEST_TIMEOUT_MS,
 });
 
 API.interceptors.request.use((req) => {
@@ -17,5 +20,32 @@ API.interceptors.request.use((req) => {
   }
   return req;
 });
+
+API.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const config = error.config;
+    if (!config) {
+      return Promise.reject(error);
+    }
+
+    const status = error.response?.status;
+    const isRetriable =
+      !status ||
+      status >= 500 ||
+      error.code === 'ECONNABORTED';
+
+    config.__retryCount = config.__retryCount || 0;
+
+    if (!isRetriable || config.__retryCount >= MAX_RETRIES) {
+      return Promise.reject(error);
+    }
+
+    config.__retryCount += 1;
+    const delayMs = 300 * config.__retryCount;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    return API(config);
+  }
+);
 
 export default API;

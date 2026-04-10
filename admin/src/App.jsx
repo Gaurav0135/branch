@@ -1,6 +1,8 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './context/AuthContext';
+import API from './api/axios';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Bookings from './pages/Bookings';
@@ -42,6 +44,22 @@ const AppRoutes = () => (
 );
 
 function App() {
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const warmAndPrefetch = async () => {
+      await Promise.allSettled([
+        API.get('/health'),
+        API.get('/admin/services'),
+        API.get('/admin/bookings'),
+        API.get('/images'),
+      ]);
+    };
+
+    void warmAndPrefetch();
+  }, []);
+
   return (
     <BrowserRouter>
       <AuthProvider>

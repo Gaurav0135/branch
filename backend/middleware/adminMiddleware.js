@@ -8,7 +8,13 @@ export const adminOnly = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id);
+
+    if (decoded.role === "admin") {
+      req.user = { id: decoded.id, role: decoded.role };
+      return next();
+    }
+
+    const user = await User.findById(decoded.id).select("name email role").lean();
     if (!user || user.role !== "admin") {
       return res.status(403).json({ msg: "Admin access required" });
     }

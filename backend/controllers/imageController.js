@@ -1,9 +1,21 @@
 import Image from "../models/Image.js";
-import { ensureCloudinaryConfigured } from "../config/cloudinary.js";
+import { cloudinary, ensureCloudinaryConfigured } from "../config/cloudinary.js";
 import {
   syncLocalImagesToCloudinary,
   uploadBufferToCloudinary,
 } from "../services/imageSyncService.js";
+
+let hasTriggeredStartupSync = false;
+
+const triggerStartupImageSync = () => {
+  if (hasTriggeredStartupSync) return;
+  hasTriggeredStartupSync = true;
+
+  // Keep GET /images fast by running local-to-cloud sync once in background.
+  void syncLocalImagesToCloudinary().catch((err) => {
+    console.error("Background image sync failed:", err.message);
+  });
+};
 
 export const uploadImage = async (req, res) => {
   try {
@@ -42,13 +54,13 @@ export const uploadImage = async (req, res) => {
 
 export const getImages = async (req, res) => {
   try {
-    await syncLocalImagesToCloudinary();
+    triggerStartupImageSync();
 
     const { category } = req.query;
 
     const images = category
-      ? await Image.find({ category })
-      : await Image.find();
+      ? await Image.find({ category }).sort({ createdAt: -1 }).lean()
+      : await Image.find().sort({ createdAt: -1 }).lean();
 
     res.json(images);
   } catch (err) {
@@ -95,9 +107,8 @@ export const deleteImage = async (req, res) => {
       return res.status(404).json({ msg: "Image not found." });
     }
 
-    if (image.cloudinaryPublicId) {
+    if (image.cloudinaryPublicId && ensureCloudinaryConfigured()) {
       try {
-        const cloudinary = require("cloudinary").v2;
         await cloudinary.uploader.destroy(image.cloudinaryPublicId);
       } catch (cloudinaryErr) {
         console.error("Error deleting from Cloudinary:", cloudinaryErr);

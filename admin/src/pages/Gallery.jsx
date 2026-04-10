@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import API from "../api/axios";
 import "../gallery-notifications.css";
 
+const GALLERY_CACHE_KEY = "frameza_admin_gallery_cache_v1";
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
 const Gallery = () => {
   const [images, setImages] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -14,25 +17,60 @@ const Gallery = () => {
   const [uploadingFile, setUploadingFile] = useState(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [usingCachedData, setUsingCachedData] = useState(false);
 
-  const fetchImages = useCallback(async () => {
+  const readCachedImages = useCallback(() => {
     try {
-      setLoading(true);
-      const res = await API.get("/images");
-      setImages(res.data);
-      
-      const cats = [...new Set(res.data.map(img => img.category))];
+      const cachedRaw = sessionStorage.getItem(GALLERY_CACHE_KEY);
+      if (!cachedRaw) return false;
+      const cached = JSON.parse(cachedRaw);
+      const isFresh = Date.now() - Number(cached.timestamp || 0) < CACHE_TTL_MS;
+      if (!isFresh || !Array.isArray(cached.data)) return false;
+      setImages(cached.data);
+      const cats = [...new Set(cached.data.map((img) => img.category))];
       setCategories(cats);
-    } catch (err) {
-      setError("Failed to load images");
-    } finally {
-      setLoading(false);
+      setUsingCachedData(true);
+      return true;
+    } catch {
+      return false;
     }
   }, []);
 
+  const writeCachedImages = useCallback((data) => {
+    try {
+      sessionStorage.setItem(GALLERY_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+    } catch {
+      // Ignore cache write errors.
+    }
+  }, []);
+
+  const fetchImages = useCallback(async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      const res = await API.get("/images");
+      const nextImages = res.data;
+      setImages(nextImages);
+      
+      const cats = [...new Set(nextImages.map(img => img.category))];
+      setCategories(cats);
+      writeCachedImages(nextImages);
+      setUsingCachedData(false);
+    } catch (err) {
+      setError("Failed to load images");
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [writeCachedImages]);
+
   useEffect(() => {
-    fetchImages();
-  }, [fetchImages]);
+    const hasFreshCache = readCachedImages();
+    if (hasFreshCache) {
+      setLoading(false);
+      fetchImages(true);
+      return;
+    }
+    fetchImages(false);
+  }, [fetchImages, readCachedImages]);
 
   const filteredImages = selectedCategory === "all" 
     ? images 
@@ -119,6 +157,7 @@ const Gallery = () => {
       <div className="page-header">
         <h2>Gallery Management</h2>
         <p>Manage images by category</p>
+        {usingCachedData ? <small className="text-warning">Showing cached data while refreshing...</small> : null}
       </div>
 
       {error && (

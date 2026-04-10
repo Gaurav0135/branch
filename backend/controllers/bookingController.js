@@ -21,7 +21,10 @@ export const createBooking = async (req, res) => {
 
 export const getBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find().populate("serviceId");
+    const bookings = await Booking.find()
+      .populate("serviceId", "title price description category")
+      .sort({ createdAt: -1 })
+      .lean();
     res.json(bookings);
   } catch (err) {
     res.status(500).json({ msg: err.message });
@@ -30,7 +33,10 @@ export const getBookings = async (req, res) => {
 
 export const getUserBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find({ userId: req.user.id }).populate("serviceId");
+    const bookings = await Booking.find({ userId: req.user.id })
+      .populate("serviceId", "title price description category")
+      .sort({ createdAt: -1 })
+      .lean();
     res.json(bookings);
   } catch (err) {
     res.status(500).json({ msg: err.message });

@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import API from '../api/axios';
 
+const SERVICES_CACHE_KEY = 'frameza_admin_services_cache_v1';
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
 const initialForm = {
   title: '',
   price: '',
@@ -11,26 +14,59 @@ const Services = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [usingCachedData, setUsingCachedData] = useState(false);
   const [formData, setFormData] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState('');
   const [query, setQuery] = useState('');
 
-  const fetchServices = async () => {
+  const readCachedServices = () => {
     try {
-      setLoading(true);
+      const cachedRaw = sessionStorage.getItem(SERVICES_CACHE_KEY);
+      if (!cachedRaw) return false;
+      const cached = JSON.parse(cachedRaw);
+      const isFresh = Date.now() - Number(cached.timestamp || 0) < CACHE_TTL_MS;
+      if (!isFresh || !Array.isArray(cached.data)) return false;
+      setServices(cached.data);
+      setUsingCachedData(true);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const writeCachedServices = (data) => {
+    try {
+      sessionStorage.setItem(SERVICES_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+    } catch {
+      // Ignore cache write errors.
+    }
+  };
+
+  const fetchServices = async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
       setError('');
       const res = await API.get('/admin/services');
-      setServices(res.data || []);
+      const nextServices = res.data || [];
+      setServices(nextServices);
+      writeCachedServices(nextServices);
+      setUsingCachedData(false);
     } catch (err) {
       setError(err.response?.data?.msg || 'Failed to load services.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchServices();
+    const hasFreshCache = readCachedServices();
+    if (hasFreshCache) {
+      setLoading(false);
+      fetchServices(true);
+      return;
+    }
+    fetchServices(false);
   }, []);
 
   const visibleServices = useMemo(() => {
@@ -128,6 +164,7 @@ const Services = () => {
           <p className="page-kicker">Catalog</p>
           <h2>Services</h2>
           <p>Create, update, and remove service offerings.</p>
+          {usingCachedData ? <small className="text-warning">Showing cached data while refreshing...</small> : null}
         </div>
 
         <div className="filter-box">

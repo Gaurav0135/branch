@@ -11,7 +11,7 @@ export const createService = async (req, res) => {
 
 export const getServices = async (req, res) => {
   try {
-    const services = await Service.find();
+    const services = await Service.find().sort({ _id: -1 }).lean();
     res.json(services);
   } catch (err) {
     res.status(500).json({ msg: err.message });

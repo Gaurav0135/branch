@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import API from '../api/axios';
 
+const BOOKINGS_CACHE_KEY = 'frameza_admin_bookings_cache_v1';
+const CACHE_TTL_MS = 2 * 60 * 1000;
+
 const statusOptions = ['pending', 'confirmed', 'rejected', 'completed', 'cancelled'];
 const approvalStatusOptions = ['completed', 'cancelled'];
 
@@ -29,6 +32,7 @@ const Bookings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [usingCachedData, setUsingCachedData] = useState(false);
   const [savingId, setSavingId] = useState('');
   const [filter, setFilter] = useState('all');
 
@@ -46,11 +50,36 @@ const Bookings = () => {
     }
   }, [error]);
 
+  const readCachedBookings = () => {
+    try {
+      const cachedRaw = sessionStorage.getItem(BOOKINGS_CACHE_KEY);
+      if (!cachedRaw) return false;
+      const cached = JSON.parse(cachedRaw);
+      const isFresh = Date.now() - Number(cached.timestamp || 0) < CACHE_TTL_MS;
+      if (!isFresh || !Array.isArray(cached.data)) return false;
+      setBookings(cached.data);
+      setUsingCachedData(true);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const writeCachedBookings = (data) => {
+    try {
+      sessionStorage.setItem(BOOKINGS_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+    } catch {
+      // Ignore cache write errors.
+    }
+  };
+
   const fetchBookings = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
       const res = await API.get('/admin/bookings');
       setBookings(res.data);
+      writeCachedBookings(res.data);
+      setUsingCachedData(false);
     } catch (err) {
       setError(err.response?.data?.msg || 'Failed to load bookings.');
     } finally {
@@ -59,7 +88,13 @@ const Bookings = () => {
   };
 
   useEffect(() => {
-    fetchBookings();
+    const hasFreshCache = readCachedBookings();
+    if (hasFreshCache) {
+      setLoading(false);
+      fetchBookings(true);
+    } else {
+      fetchBookings(false);
+    }
 
     const interval = setInterval(() => {
       fetchBookings(true);
@@ -151,6 +186,7 @@ const Bookings = () => {
           <p className="page-kicker">Operations</p>
           <h2>Bookings</h2>
           <p>Update booking status from the standalone admin panel.</p>
+          {usingCachedData ? <small className="text-warning">Showing cached data while refreshing...</small> : null}
         </div>
 
         <div className="filter-box">
