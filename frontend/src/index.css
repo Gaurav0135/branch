@@ -709,6 +709,16 @@ body {
   letter-spacing: 0.8px;
 }
 
+.services-page .services-subtitle,
+.services-page .section-intro .text-muted {
+  color: rgba(231, 241, 255, 0.92) !important;
+}
+
+.services-page .services-sync-text,
+.services-page .section-intro .text-secondary {
+  color: rgba(165, 226, 255, 0.95) !important;
+}
+
 .service-card {
   border-radius: 14px;
   overflow: hidden;

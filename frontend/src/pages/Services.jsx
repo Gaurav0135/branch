@@ -96,10 +96,10 @@ const Services = () => {
         <div className="section-intro text-center mb-5">
           <span className="text-uppercase text-info fw-bold">Premium Packages</span>
           <h1 className="text-white mb-3">Our Services</h1>
-          <p className="text-muted fs-5">
+          <p className="services-subtitle fs-5">
             Choose from tailored packages and book instantly. Your journey to stunning photography starts here.
           </p>
-          <small className="text-secondary d-block mt-2">
+          <small className="services-sync-text d-block mt-2">
             {isRefreshing ? 'Refreshing...' : formatRefreshText(lastRefreshAt)}
           </small>
           {usingCachedData ? (
