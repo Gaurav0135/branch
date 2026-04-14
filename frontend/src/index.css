@@ -324,6 +324,39 @@ body {
 
 .gallery-card__body {
   background: rgba(1, 6, 13, 0.85);
+  color: #eefbf7;
+  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.35rem;
+  overflow: hidden;
+}
+
+.gallery-card__body .card-title {
+  color: #f4fffb !important;
+  font-size: 1rem;
+  line-height: 1.25;
+  margin-bottom: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+}
+
+.gallery-card__body .card-text {
+  color: rgba(220, 245, 236, 0.82) !important;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  margin-bottom: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
 }
 
 .gallery-skeleton-card {
