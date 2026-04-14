@@ -102,11 +102,13 @@ const GalleryCard = ({ image }) => {
           onLoad={() => setImageState("loaded")}
           onError={() => setImageState("error")}
         />
-      </div>
 
-      <div className="card-body gallery-card__body">
-        <h5 className="card-title">{image.title || "Untitled"}</h5>
-        <p className="card-text text-muted">{image.category || "Creative Collection"}</p>
+        <div className="gallery-card__overlay">
+          <div className="gallery-card__meta">
+            <h5 className="gallery-card__title">{image.title || "Untitled"}</h5>
+            <p className="gallery-card__category">{image.category || "Creative Collection"}</p>
+          </div>
+        </div>
       </div>
     </div>
   );
