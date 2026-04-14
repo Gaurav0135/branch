@@ -36,50 +36,77 @@
 // export default GalleryCard;
 
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const GalleryCard = ({ image }) => {
-  const [visible, setVisible] = useState(true);
+  const [imageState, setImageState] = useState("loading");
 
   const normalizeImageUrl = (url) => {
-    if (!url) return null; // ❌ don't show placeholder, skip card
+    if (!url) return null;
 
     const trimmed = url.trim();
 
-    // ✅ Cloudinary / external URL
     if (/^(https?:)?\/\//i.test(trimmed)) {
       return trimmed;
     }
 
-    // ✅ Local image handling
     const withoutUploads = trimmed.replace(/^uploads\//i, "");
     const withoutLeadingSlash = withoutUploads.replace(/^\//, "");
 
     return `http://localhost:5000/uploads/${withoutLeadingSlash}`;
   };
 
-  const imageSrc = normalizeImageUrl(image.imageUrl);
+  const optimizeImageUrl = (url) => {
+    if (!url) return null;
 
-  // ❌ If no valid URL → don't render
-  if (!imageSrc || !visible) return null;
+    if (/cloudinary\.com/i.test(url) && /\/upload\//i.test(url)) {
+      return url.replace(
+        "/upload/",
+        "/upload/f_auto,q_auto,c_fill,g_auto,w_900,h_650/"
+      );
+    }
+
+    return url;
+  };
+
+  const imageSrc = optimizeImageUrl(normalizeImageUrl(image.imageUrl));
+
+  useEffect(() => {
+    setImageState("loading");
+  }, [imageSrc]);
+
+  if (!imageSrc) return null;
 
   return (
-    <div className="card h-100 shadow-sm">
-      <img
-        src={imageSrc}
-        alt={image.title || "gallery image"}
-        className="card-img-top"
-        style={{ height: "200px", objectFit: "cover" }}
-        onError={() => setVisible(false)} // 🔥 MAIN FIX
-      />
+    <div className="card h-100 shadow-sm gallery-card">
+      <div className="gallery-card__media">
+        {imageState === "loading" ? (
+          <div className="gallery-card__skeleton" aria-hidden="true">
+            <span className="gallery-card__spinner"></span>
+          </div>
+        ) : null}
 
-      <div className="card-body">
-        <h5 className="card-title">
-          {image.title || "Untitled"}
-        </h5>
-        <p className="card-text text-muted">
-          {image.category || "Creative Collection"}
-        </p>
+        {imageState === "error" ? (
+          <div className="gallery-card__fallback" aria-hidden="true">
+            <span>Image unavailable</span>
+          </div>
+        ) : null}
+
+        <img
+          src={imageSrc}
+          alt={image.title || "gallery image"}
+          className={`card-img-top gallery-card__image ${imageState === "loaded" ? "is-loaded" : "is-loading"}`}
+          loading="lazy"
+          decoding="async"
+          fetchPriority="low"
+          onLoad={() => setImageState("loaded")}
+          onError={() => setImageState("error")}
+        />
+      </div>
+
+      <div className="card-body gallery-card__body">
+        <h5 className="card-title">{image.title || "Untitled"}</h5>
+        <p className="card-text text-muted">{image.category || "Creative Collection"}</p>
       </div>
     </div>
   );

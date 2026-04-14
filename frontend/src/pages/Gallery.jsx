@@ -105,11 +105,29 @@ const Gallery = () => {
     ? images.filter(img => img.category === selectedCategory)
     : images;
 
+  const loaderCards = Array.from({ length: 6 }, (_, index) => index);
+
   if (loading) {
     return (
-      <div style={styles.loaderWrapper}>
-        <div style={styles.spinner}></div>
-        <p style={{ color: "#aaa" }}>Loading gallery...</p>
+      <div style={styles.page}>
+        <div style={styles.container}>
+          <div style={styles.header}>
+            <h1 style={styles.title}>Frameza Gallery</h1>
+            <p style={styles.subtitle}>Preparing your gallery previews...</p>
+          </div>
+
+          <div style={styles.loadingGrid}>
+            {loaderCards.map((cardIndex) => (
+              <div key={cardIndex} className="gallery-skeleton-card">
+                <div className="gallery-skeleton-card__media"></div>
+                <div className="gallery-skeleton-card__body">
+                  <div className="gallery-skeleton-line gallery-skeleton-line--title"></div>
+                  <div className="gallery-skeleton-line gallery-skeleton-line--text"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -266,5 +284,11 @@ const styles = {
     borderRadius: "50%",
     animation: "spin 1s linear infinite",
     marginBottom: "10px"
+  },
+
+  loadingGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(clamp(200px, 100%, 280px), 1fr))",
+    gap: "clamp(12px, 3vw, 20px)"
   }
 };
